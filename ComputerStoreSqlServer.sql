@@ -1,13 +1,14 @@
 Use ComputerStoreSQLServer
 Go
 
-DROP TABLE Transactions
-DROP TABLE Clients
-DROP TABLE MotherboardDetails
-DROP TABLE ProcessorDetails
-DROP TABLE RAMDetails
-DROP TABLE GraphicsCardDetails
-DROP TABLE STOCK
+DROP TABLE IF EXISTS MotherboardDetails
+DROP TABLE IF EXISTS ProcessorDetails
+DROP TABLE IF EXISTS RAMDetails
+DROP TABLE IF EXISTS GraphicsDetails
+DROP TABLE IF EXISTS Transactions
+DROP TABLE IF EXISTS Clients
+DROP TABLE IF EXISTS STOCK
+DROP TABLE IF EXISTS CompatibilityRules
 
 -- Create STOCK table
 CREATE TABLE dbo.Stock (
@@ -18,7 +19,7 @@ CREATE TABLE dbo.Stock (
 );
 
 -- Create GraphicsCardDetails table
-Create Table dbo.GraphicsCardDetails(
+Create Table dbo.GraphicsDetails(
 	product_id INT NOT NULL FOREIGN KEY REFERENCES Stock(product_id),
 	model VARCHAR(100) NOT NULL,
 	interface VARCHAR(10) NOT NULL
@@ -80,15 +81,14 @@ CREATE TABLE dbo.Transactions (
 
 -- INSERTING DATA -------------------------------
 INSERT INTO dbo.Stock VALUES 
-    (1, 10, 3200),
-    (2, 1, 6500),
-    (3, 11, 1100),
-    (4, 6, 1500),
-    (5, 5, 2000),
-    (6, 7, 1500),
-    (7, 20, 1000),
-    (8, 1, 10000),
-	(9, 0, 0);
+    (1,'Graphics', 10, 3200),
+    (2,'Processor', 1, 6500),
+    (3,'RAM', 11, 1100),
+    (4,'Motherboard', 6, 1500),
+    (5,'Graphics', 5, 2000),
+    (6,'Processor', 7, 1500),
+    (7,'RAM', 20, 1000),
+    (8,'Motherboard', 1, 10000);
 
 INSERT INTO Clients values
 	('Jan', 'Nowak', '£Ûdü ul. Kolejowa 1'),
@@ -98,7 +98,7 @@ INSERT INTO Clients values
 	('Micha≥', 'Nowak', '£Ûdü ul. Piotrkowska 1')
 Go
 
-INSERT INTO GraphicsCardDetails values
+INSERT INTO GraphicsDetails values
 	(1, 'NVIDIA 3060', 'PCIe 4.0'),
 	(5, 'Radeon RX 6600', 'PCIe 4.0')
 Go
@@ -109,8 +109,8 @@ INSERT INTO ProcessorDetails values
 Go
 
 INSERT INTO RAMDetails values
-	(3, 'Kingston FURY 8GB', 'DDR4'),
-	(7, 'GOODRAM 8GB', 'DDR4')
+	(3, 'Kingston FURY', 'DDR4', 8),
+	(7, 'GOODRAM', 'DDR4', 8)
 Go
 
 INSERT INTO MotherboardDetails values
@@ -119,9 +119,12 @@ INSERT INTO MotherboardDetails values
 Go
 
 INSERT INTO dbo.CompatibilityRules (product_category_1, product_category_2, compatibility_criteria) VALUES 
-	('Processor', 'Motherboard', 'ProcessorDetails.socket = MotherboardDetails.socket'),
-	('RAM', 'Motherboard', 'RAMDetails.memory_type = MotherboardDetails.memory_type'),
-	('Graphics Card', 'Motherboard', 'GraphicsCardDetails.interface = MotherboardDetails.interface')
+	('Processor', 'Motherboard', 'd1.socket = d2.socket'),
+	('RAM', 'Motherboard', 'd1.memory_type = d2.memory_type'),
+	('Graphics', 'Motherboard', 'd1.interface = d2.interface'),
+	('Motherboard', 'Processor', 'd1.socket = d2.socket'),
+	('Motherboard', 'RAM', 'd1.memory_type = d2.memory_type'),
+	('Motherboard', 'Graphics', 'd1.interface = d2.interface')
 GO
 
 SELECT * FROM dbo.Stock;
