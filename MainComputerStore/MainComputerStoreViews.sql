@@ -8,7 +8,7 @@ CREATE OR ALTER VIEW SqlServerAvailableComponents AS
 SELECT *
 FROM OPENROWSET('MSOLEDBSQL', 
 	'LAPTOP-PCASHRLR'; 
-	'computerStoreLoginSqlServer'; 
+	'ComputerStoreLoginSqlServer'; 
 	'12345','SELECT * FROM [SQLServerLS].[ComputerStoreSQLServer].dbo.Stock s WHERE s.quantity > 0')
 Go
 
@@ -49,6 +49,7 @@ Go
 
 SELECT * FROM AllAvailableComponents
 Go
+
 -- ComponentPrices View -------------------------------------------------
 CREATE OR ALTER VIEW ComponentPrices AS
 SELECT 
@@ -78,25 +79,6 @@ GROUP BY
 GO
 
 SELECT * FROM ProductSales
-Go
-
--- PopularManufacturers View -------------------------------------------------
-
-CREATE OR ALTER VIEW PopularManufacturers AS
-SELECT TOP 3 
-    LEFT(p.product_name, CHARINDEX(' ', p.product_name) - 1) AS manufacturer,
-    COUNT(t.product_id) AS total_sales
-FROM 
-    Products p
-JOIN 
-    Transactions t ON p.product_id = t.product_id
-GROUP BY 
-    LEFT(p.product_name, CHARINDEX(' ', p.product_name) - 1)
-ORDER BY 
-    total_sales DESC;
-GO
-
-SELECT * FROM PopularManufacturers
 Go
 
 -- MostPurchasedProducts View -------------------------------------------------
@@ -152,7 +134,7 @@ JOIN
     Products p2 ON p1.product_id <> p2.product_id
 WHERE 
     p1.quantity = 0 AND p2.quantity > 0 AND 
-    LEFT(p1.product_name, CHARINDEX(' ', p1.product_name)) = LEFT(p2.product_name, CHARINDEX(' ', p2.product_name));
+    p1.product_name =p2.product_name
 GO
 
 SELECT * FROM SimilarAvailableComponents

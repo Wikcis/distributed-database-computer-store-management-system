@@ -4,12 +4,12 @@ GO
 -- CheckCompatibility PROCEDURE ----------------------------------------
 CREATE OR ALTER PROCEDURE dbo.CheckCompatibility
     @product_id_1 INT,
-    @product_id_2 INT,
-    @is_compatible BIT OUTPUT
+    @product_id_2 INT
 AS
 BEGIN
     DECLARE @category_1 VARCHAR(50);
     DECLARE @category_2 VARCHAR(50);
+	DECLARE @is_compatible BIT;
     DECLARE @sql NVARCHAR(MAX);
     DECLARE @params NVARCHAR(MAX) = N'@product_id_1 INT, @product_id_2 INT, @is_compatible BIT OUTPUT';
 
@@ -36,25 +36,65 @@ BEGIN
     FROM dbo.CompatibilityRules
     WHERE product_category_1 = @category_1 AND product_category_2 = @category_2;
 
-    PRINT @sql;
-
     IF @sql IS NOT NULL
     BEGIN
         EXEC sp_executesql @sql, @params, @product_id_1 = @product_id_1, @product_id_2 = @product_id_2, @is_compatible = @is_compatible OUTPUT;
-    END
+		IF @is_compatible = 1
+		BEGIN
+			PRINT 'Components are compatible!'
+		END
+		ELSE
+		BEGIN
+			PRINT 'Components are not compatible!'
+		END
+	END
     ELSE
     BEGIN
         PRINT 'No compatibility rule found for the given product categories.';
+		PRINT 'Components are compatible!'
+    END
+END;
+GO
+
+-- BuyComponent Procedure --------------------------------
+
+CREATE OR ALTER PROCEDURE BuyComponent
+    @product_id INT,
+    @client_id INT,
+    @quantity INT
+AS
+BEGIN
+    DECLARE @available_quantity INT;
+	DECLARE @price MoNEY;
+
+    SELECT @available_quantity = quantity FROM Stock WHERE product_id = @product_id;
+	SELECT @price = price * @quantity FROM Stock WHERE product_id = @product_id;
+
+    IF @available_quantity >= @quantity
+    BEGIN
+        INSERT INTO Transactions
+        VALUES (@product_id, @price, @quantity, @client_id, GETDATE());
+
+        UPDATE Stock
+        SET quantity = quantity - @quantity
+        WHERE product_id = @product_id;
+    END
+    ELSE
+    BEGIN
+        PRINT 'Not enough stock available';
+		SELECT * FROM SimilarAvailableComponents
     END
 END;
 GO
 
 -- TESTING -----------------------------------------
-DECLARE @is_compatible BIT;
 
 EXEC dbo.CheckCompatibility
     @product_id_1 = 1,
-    @product_id_2 = 1,
-    @is_compatible = @is_compatible OUTPUT;
+    @product_id_2 = 4
 
-SELECT @is_compatible AS IsCompatible;
+EXEC dbo.BuyComponent
+    @product_id = 1,
+	@client_id = 1,
+	@quantity = 1
+

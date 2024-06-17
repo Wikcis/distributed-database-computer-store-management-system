@@ -7,10 +7,6 @@ Go
 Use MainComputerStore
 Go
 
-DROP TABLE IF EXISTS GraphicsCardDetails
-DROP TABLE IF EXISTS RAMDetails
-DROP TABLE IF EXISTS ProcessorDetails
-DROP TABLE IF EXISTS MotherboardDetails
 DROP TABLE IF EXISTS Transactions
 DROP TABLE IF EXISTS Products
 DROP TABLE IF EXISTS Clients
@@ -32,16 +28,17 @@ Create Table Stores(
 Go
 
 Create Table Clients(
-	client_id INT PRIMARY KEY,
+	client_id INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
 	name VARCHAR(30) NOT NULL,
 	last_name VARCHAR(50) NOT NULL,
-	address VARCHAR(200)
+	address VARCHAR(200) NOT NULL
 )
 Go
 
 Create Table Products(
 	product_id INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
 	product_name VARCHAR(100) NOT NULL,
+	category VARCHAR(50) NOT NULL,
 	quantity INT CHECK (quantity>=0),
 	price MONEY CHECK (price>=0)
 )
@@ -52,20 +49,21 @@ Create Table Transactions(
 	product_id INT NOT NULL FOREIGN KEY REFERENCES Products(product_id),
 	client_id INT NOT NULL FOREIGN KEY REFERENCES Clients(client_id),
 	quantity INT CHECK (quantity>=0),
-	price MONEY CHECK (price>=0)
+	price MONEY CHECK (price>=0),
+	date DATE DEFAULT GETDATE()
 )
 Go
 
 -- INSERTING DATA ----------------------------------------------------
 INSERT INTO Products values
-	('Karta graficzna NVIDIA 3060', 10, 3200),
-	('Procesor INTEL Core i5', 20, 6500),
-	('Pamiêæ RAM Kingstone', 20, 1100),
-	('P³yta g³ówna Gigabyte B550M', 20, 1500),
-	('Karta graficzna Radeon RX 6600', 20, 2000),
-	('Procesor AMD Ryzen 5', 20, 1500),
-	('Pamiêæ Ram GOODRAM', 20, 1000),
-	('P³yta g³ówna MSI PRO H510', 20, 10000)
+	('Karta graficzna NVIDIA 3060','Graphics', 10, 3200),
+	('Procesor INTEL Core i5','Processor', 20, 6500),
+	('Pamiêæ Ram KINGSTONE','RAM', 20, 1100),
+	('P³yta g³ówna GIGABYTE B550M','Motherboard', 20, 1500),
+	('Karta graficzna RADEON RX 6600','Graphics', 20, 2000),
+	('Procesor AMD Ryzen 5','Processor', 20, 1500),
+	('Pamiêæ Ram GOODRAM','RAM', 20, 1000),
+	('P³yta g³ówna MSI Pro H510','Motherboard', 20, 10000)
 Go
 
 INSERT INTO Clients values
@@ -84,10 +82,10 @@ Go
 
 -- CREATING DATABSE AND USER -----------------------------------------
 
-Create Database ComputerStoreSQLServer;
+Create Database ComputerStoreSqlServer;
 Go
 
-USE ComputerStoreSQLServer
+USE ComputerStoreSqlServer
 Go
 
 CREATE LOGIN computerStoreLoginSqlServer WITH PASSWORD = '12345'
@@ -97,6 +95,9 @@ ALTER ROLE db_owner ADD MEMBER computerStoreUserSqlServer;
 
 
 -- CREATING SQL SERVER LINKED SERVER -----------------------------------------
+USE MainComputerStore
+Go
+
 sp_linkedservers
 
 EXEC sp_addlinkedserver
@@ -109,7 +110,7 @@ GO
 sp_addlinkedsrvlogin
 	@rmtsrvname = N'SQLServerLS',
 	@useself = 'False',
-	@rmtuser = N'computerStoreLoginSqlServer', 
+	@rmtuser = N'ComputerStoreLoginSqlServer', 
 	@rmtpassword = N'12345'
 GO
 
@@ -129,4 +130,3 @@ sp_addlinkedsrvlogin
 	@rmtuser = N'computerStoreUserOracle', 
 	@rmtpassword = N'12345'
 GO
-

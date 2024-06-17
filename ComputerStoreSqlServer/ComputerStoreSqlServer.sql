@@ -13,6 +13,7 @@ DROP TABLE IF EXISTS CompatibilityRules
 -- Create STOCK table
 CREATE TABLE dbo.Stock (
     product_id INT PRIMARY KEY,
+	product_name VARCHAR(100) NOT NULL,
 	category VARCHAR(50) NOT NULL,
     quantity INT CHECK (quantity >= 0),
     price MONEY CHECK (price >= 0)
@@ -54,7 +55,7 @@ Create Table dbo.MotherboardDetails(
 Go
 
 CREATE TABLE dbo.CompatibilityRules (
-    rule_id INT PRIMARY KEY IDENTITY(1,1),
+    rule_id INT PRIMARY KEY IDENTITY(1,1) NOT NULL,
     product_category_1 VARCHAR(50) NOT NULL,
     product_category_2 VARCHAR(50) NOT NULL,
     compatibility_criteria VARCHAR(100) NOT NULL
@@ -71,7 +72,7 @@ CREATE TABLE dbo.Clients (
 
 -- Create TRANSACTIONS table
 CREATE TABLE dbo.Transactions (
-    transaction_id INT PRIMARY KEY,
+    transaction_id INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
     product_id INT FOREIGN KEY (product_id) REFERENCES dbo.Stock (product_id),
     price MONEY CHECK (price >= 0),
     quantity INT CHECK (quantity >= 0),
@@ -80,15 +81,18 @@ CREATE TABLE dbo.Transactions (
 );
 
 -- INSERTING DATA -------------------------------
-INSERT INTO dbo.Stock VALUES 
-    (1,'Graphics', 10, 3200),
-    (2,'Processor', 1, 6500),
-    (3,'RAM', 11, 1100),
-    (4,'Motherboard', 6, 1500),
-    (5,'Graphics', 5, 2000),
-    (6,'Processor', 7, 1500),
-    (7,'RAM', 20, 1000),
-    (8,'Motherboard', 1, 10000);
+INSERT INTO dbo.Stock values 
+	(1,'Karta graficzna NVIDIA 3060','Graphics', 10, 3200),
+	(2,'Procesor INTEL Core i5','Processor', 20, 6500),
+	(3,'Pamiêæ Ram KINGSTONE','RAM', 20, 1100),
+	(4,'P³yta g³ówna GIGABYTE B550M','Motherboard', 20, 1500),
+	(5,'Karta graficzna RADEON RX 6600','Graphics', 20, 2000),
+	(6,'Procesor AMD Ryzen 5','Processor', 20, 1500),
+	(7,'Pamiêæ Ram GOODRAM','RAM', 20, 1000),
+	(8,'P³yta g³ówna MSI Pro H510','Motherboard', 20, 10000)
+Go
+
+INSERT INTO dbo.Stock VALUES (9,'P³yta g³ówna MSI Pro H700', 'Motherboard', 0, 100);
 
 INSERT INTO Clients values
 	('Jan', 'Nowak', '£ódŸ ul. Kolejowa 1'),
@@ -127,4 +131,6 @@ INSERT INTO dbo.CompatibilityRules (product_category_1, product_category_2, comp
 	('Motherboard', 'Graphics', 'd1.interface = d2.interface')
 GO
 
-SELECT * FROM dbo.Stock;
+INSERT INTO Transactions values (1, 3200, 1, 1, GETDATE())
+
+SELECT * FROM Transactions
