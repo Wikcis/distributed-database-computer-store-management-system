@@ -7,26 +7,17 @@ Go
 Use MainComputerStore
 Go
 
+
+DROP TABLE IF EXISTS LocalTransactions
 DROP TABLE IF EXISTS Transactions
-DROP TABLE IF EXISTS Products
 DROP TABLE IF EXISTS Clients
-DROP TABLE IF EXISTS Logs
+DROP TABLE IF EXISTS Stock
 DROP TABLE IF EXISTS Stores
 
 
 -- CREATING TABLES -----------------------------------------
-Create Table Logs(
-	log_id INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
-	log_details VARCHAR(255),
-)
-Go
 
-Create Table Stores(
-	store_id INT NOT NULL PRIMARY KEY,
-	address VARCHAR(200) NOT NULL,
-)
-Go
-
+-- Create Clients table ---------------------
 Create Table Clients(
 	client_id INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
 	name VARCHAR(30) NOT NULL,
@@ -35,7 +26,8 @@ Create Table Clients(
 )
 Go
 
-Create Table Products(
+-- Create Stock table ---------------------
+Create Table Stock (
 	product_id INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
 	product_name VARCHAR(100) NOT NULL,
 	category VARCHAR(50) NOT NULL,
@@ -44,18 +36,37 @@ Create Table Products(
 )
 Go
 
-Create Table Transactions(
+-- Create Transactions table ---------------------
+Create Table LocalTransactions(
 	transaction_id INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
-	product_id INT NOT NULL FOREIGN KEY REFERENCES Products(product_id),
+	product_id INT NOT NULL FOREIGN KEY REFERENCES Stock(product_id),
 	client_id INT NOT NULL FOREIGN KEY REFERENCES Clients(client_id),
 	quantity INT CHECK (quantity>=0),
 	price MONEY CHECK (price>=0),
-	date DATE DEFAULT GETDATE()
+	transaction_date DATE DEFAULT GETDATE()
+)
+Go
+
+-- Create TransactionsCombined table ---------------------
+Create Table Transactions(
+	transaction_id INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+	product_id INT NOT NULL FOREIGN KEY REFERENCES Stock(product_id),
+	client_id INT NOT NULL FOREIGN KEY REFERENCES Clients(client_id),
+	quantity INT CHECK (quantity>=0),
+	price MONEY CHECK (price>=0),
+	transaction_date DATE DEFAULT GETDATE()
+)
+Go
+
+-- Create Stores table ---------------------
+Create Table Stores (
+	store_id INT NOT NULL PRIMARY KEY IDENTITY(1, 1),
+	address VARCHAR(200) NOT NULL
 )
 Go
 
 -- INSERTING DATA ----------------------------------------------------
-INSERT INTO Products values
+INSERT INTO Stock values
 	('Karta graficzna NVIDIA 3060','Graphics', 10, 3200),
 	('Procesor INTEL Core i5','Processor', 20, 6500),
 	('Pamiêæ Ram KINGSTONE','RAM', 20, 1100),
@@ -63,7 +74,8 @@ INSERT INTO Products values
 	('Karta graficzna RADEON RX 6600','Graphics', 20, 2000),
 	('Procesor AMD Ryzen 5','Processor', 20, 1500),
 	('Pamiêæ Ram GOODRAM','RAM', 20, 1000),
-	('P³yta g³ówna MSI Pro H510','Motherboard', 20, 10000)
+	('P³yta g³ówna MSI Pro H510','Motherboard', 20, 10000),
+	('P³yta g³ówna MSI Pro H710','Motherboard', 0, 10000)
 Go
 
 INSERT INTO Clients values
@@ -75,9 +87,9 @@ INSERT INTO Clients values
 Go
 
 INSERT INTO Stores values
-	(1,'Poland, £ódŸ, ul. Piotrkowska 1'),
-	(2,'Poland, Czêstochowa, ul. Jasnogórska 1'),
-	(3,'Poland, Kraków, ul. Piekna 1')
+	('Poland, £ódŸ, ul. Piotrkowska 1'),
+	('Poland, Czêstochowa, ul. Jasnogórska 1'),
+	('Poland, Kraków, ul. Piekna 1')
 Go
 
 -- CREATING DATABSE AND USER -----------------------------------------
@@ -122,6 +134,10 @@ EXEC sp_addlinkedserver
 	@provider=N'OraOLEDB.Oracle',
 	@datasrc='pd19c';
 GO
+
+EXEC sp_serveroption @server = 'OracleLS', @optname = 'rpc', @optvalue = 'true';
+EXEC sp_serveroption @server = 'OracleLS', @optname = 'rpc out', @optvalue = 'true';
+Go
 
 sp_addlinkedsrvlogin
 	@rmtsrvname = N'OracleLS',

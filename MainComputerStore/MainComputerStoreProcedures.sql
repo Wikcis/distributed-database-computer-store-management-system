@@ -1,38 +1,63 @@
 Use MainComputerStore
 GO
 
--- AddLog Procedure --------------------------------
-
-CREATE OR ALTER PROCEDURE AddLog
-    @log_message VARCHAR(MAX)
+-- BuyComponent Procedure --------------------------------
+CREATE OR ALTER PROCEDURE BuyComponent
+    @product_id INT,
+    @client_id INT,
+    @quantity INT
 AS
 BEGIN
-	INSERT INTO Logs
-	VALUES (@log_message);
-END;
-GO
+    DECLARE @available_quantity INT;
+	DECLARE @price MONEY;
+	DECLARE @product_name VARCHAR(50);
+	DECLARE @category VARCHAR(30);
+	DECLARE @product_id_1 INT;
 
--- AddComponentToStore Procedure --------------------------------
+    SELECT @available_quantity = quantity, @category = category FROM Stock WHERE product_id = @product_id;
+	SELECT @price = price * @quantity FROM Stock WHERE product_id = @product_id;
+    IF @available_quantity >= @quantity
+    BEGIN
+        INSERT INTO LocalTransactions
+        VALUES (@product_id, @client_id, @price, @quantity, GETDATE());
 
-CREATE OR ALTER PROCEDURE AddComponentToStore
-    @product_name VARCHAR(100),
-	@category VARCHAR(100),
-    @quantity INT,
-    @price MONEY
-AS
-BEGIN
+		SELECT @product_name = product_name FROM Stock WHERE product_id = @product_id
 
-	IF NOT EXISTS (SELECT * FROM Products WHERE product_name = @product_name AND category = @category)
-	BEGIN
-		INSERT INTO Products
-		VALUES (@product_name, @category, @quantity, @price);
-	END
-	ELSE
-	BEGIN
-		UPDATE Products
-		SET quantity = quantity + @quantity
-	END
-    
+        UPDATE Stock
+        SET quantity = quantity - @quantity
+        WHERE product_id = @product_id;
+		PRINT('You just bought product: ' + CAST(@product_name AS VARCHAR(50)))
+    END
+    ELSE
+    BEGIN
+        PRINT 'Not enough stock available';
+
+		DECLARE stock_cursor CURSOR FOR
+		SELECT product_id, product_name, category, quantity, price
+		FROM Stock
+		WHERE category = @category AND product_id <> @product_id AND quantity > 0
+
+		OPEN stock_cursor;
+        FETCH NEXT FROM stock_cursor INTO @product_id, @product_name, @category, @available_quantity, @price;
+
+        PRINT 'Alternative products available:';
+        PRINT 'Product ID | Product Name			   	    | Category		  | Quantity | Price';
+
+        WHILE @@FETCH_STATUS = 0
+        BEGIN
+            PRINT (CAST(@product_id AS VARCHAR(10)) + '		   | ' +
+                   LEFT(@product_name + REPLICATE(' ', 30), 30) + ' | ' +
+                   LEFT(@category + REPLICATE(' ', 15), 15) + ' | ' +
+                   CAST(@available_quantity AS VARCHAR(10)) + '	     | ' +
+                   CAST(@price AS VARCHAR(10)));
+
+            FETCH NEXT FROM stock_cursor INTO @product_id, @product_name, @category, @available_quantity, @price;
+        END;
+
+
+		CLOSE stock_cursor;
+		DEALLOCATE stock_cursor;
+    END
 END;
 GO
 
@@ -49,75 +74,109 @@ BEGIN
 END;
 GO
 
--- CheckAndTransferStock Procedure --------------------------------
-
-CREATE OR ALTER PROCEDURE CheckAndTransferStock
-    @product_id INT
+-- CheckCompatibility Procedure ---------------------
+CREATE OR ALTER PROCEDURE CheckCompatibility
+    @product_id_1 INT,
+	@product_id_2 INT
 AS
 BEGIN
-    DECLARE @sql_server_available_quantity INT;
-	DECLARE @oracle_available_quantity INT;
-    DECLARE @remaining_quantity INT;
-	DECLARE @quantity_to_transfer INT;
+	DECLARE @output INT;
 
-    SET @sql_server_available_quantity = COALESCE((SELECT quantity FROM SqlServerAvailableComponents WHERE product_id = @product_id), 0)
-	
-	SET @oracle_available_quantity = COALESCE((SELECT quantity FROM OracleAvailableComponents WHERE product_id = @product_id), 0)
+    EXEC (N'BEGIN COMPONENT_MANAGEMENT.CHECK_COMPATIBILITY(?,?,?); END;', @product_id_1, @product_id_2, @output OUTPUT) AT OracleLS
 
-	SELECT @remaining_quantity = quantity FROM Products WHERE product_id = @product_id
-
-	PRINT('Remaining quantity: ' + CAST(@remaining_quantity AS NVARCHAR(10)) + CHAR(13))
-
-	SET @quantity_to_transfer = round(@remaining_quantity * 0.2, 0, 1)
-
-    IF @sql_server_available_quantity IS NULL OR @sql_server_available_quantity <= @quantity_to_transfer
+	IF @output = 1
 	BEGIN
-		PRINT('Quantity of this product in sql server stock is: ' + CAST(@sql_server_available_quantity AS NVARCHAR(10)) + CHAR(13))
-		PRINT('Transfering ' + CAST(@quantity_to_transfer AS NVARCHAR(10)) + ' products' + CHAR(13))
-		IF @sql_server_available_quantity = 0
-		BEGIN
-			INSERT INTO [ComputerStoreSQLServer].dbo.Stock (product_id, product_name, category, quantity, price)
-			SELECT product_id, product_name, category, quantity, price FROM Products WHERE product_id = @product_id
-		END
-		ELSE
-		BEGIN
-			UPDATE [ComputerStoreSQLServer].dbo.Stock 
-			SET quantity = @quantity_to_transfer
-			WHERE product_id = @product_id
-		END
-			
-		UPDATE Products
-		SET quantity = quantity - @quantity_to_transfer
-		WHERE product_id = @product_id
+		PRINT('Components with ID: ' + CAST(@product_id_1 AS VARCHAR(10)) + ' and ID: ' + CAST(@product_id_2 AS VARCHAR(10)) + ' are compatible!')
 	END
-	ELSE PRINT('There are enough components in sql server stock!' + CHAR(13))
-
-	SET @quantity_to_transfer = round(@remaining_quantity * 0.2, 0, 1)
-
-    IF @oracle_available_quantity IS NULL OR @oracle_available_quantity <= @quantity_to_transfer
+	ELSE IF @output = 0
 	BEGIN
-		PRINT('Quantity of this product in oracle stock is: ' + CAST(@oracle_available_quantity AS NVARCHAR(10)) + CHAR(13))
-		PRINT('Transfering ' + CAST(@quantity_to_transfer AS NVARCHAR(10)) + ' products' + CHAR(13))
-
-		IF @oracle_available_quantity = 0
-		BEGIN
-			INSERT INTO [OracleLS]..[COMPUTERSTOREUSERORACLE].STOCK (product_id, quantity, price)
-			SELECT product_id, quantity, price FROM Products WHERE product_id = @product_id
-		END
-		ELSE
-		BEGIN
-			UPDATE [OracleLS]..[COMPUTERSTOREUSERORACLE].STOCK
-			SET quantity = @quantity_to_transfer
-			WHERE product_id = @product_id
-		END
-
-		UPDATE Products
-		SET quantity = quantity - @quantity_to_transfer
-		WHERE product_id = @product_id
+		PRINT('Components with ID: ' + CAST(@product_id_1 AS VARCHAR(10)) + ' and ID: ' + CAST(@product_id_2 AS VARCHAR(10)) + ' are not compatible!')
 	END
-	ELSE PRINT('There are enough components in oracle stock!' + CHAR(13))
+	ELSE 
+	BEGIN
+		PRINT('No data was found!')
+	END
 
 END;
 GO
 
+-- RequestAddingProducts Procedure --------------------------------
+CREATE OR ALTER PROCEDURE RequestAddingProducts
+	@product_id INT
+AS
+BEGIN
+	DECLARE @transferredQuantity INT;
+	DECLARE @quantity INT;
 
+	SELECT @quantity = quantity FROM Stock WHERE product_id = @product_id
+
+    EXEC (N'BEGIN COMPONENT_MANAGEMENT.TRANSFER_AVAILABILITY(?,?,?); END;', @product_id, @quantity, @transferredQuantity OUTPUT) AT OracleLS
+
+	IF @transferredQuantity > 0
+	BEGIN
+		UPDATE Stock
+		SET quantity += @transferredQuantity
+		WHERE product_id = @product_id;
+
+		PRINT('Data was successfully transferred!')
+	END
+	ELSE IF @transferredQuantity = 0
+	BEGIN
+		PRINT('Nothing to transfer!')
+	END
+END;
+GO
+
+-- DisplayCompatibleComponents Procedure -------------------------------------------------
+
+CREATE OR ALTER PROCEDURE DisplayCompatibleComponents
+	@product_id INT
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    DECLARE @output INT;
+    DECLARE @product_id_2 INT;
+    DECLARE @product_name VARCHAR(50);
+    DECLARE @category VARCHAR(50);
+
+    DECLARE stock_cursor CURSOR FOR
+    SELECT product_id, product_name, category
+    FROM Stock;
+
+    OPEN stock_cursor;
+    FETCH NEXT FROM stock_cursor INTO @product_id_2, @product_name, @category;
+
+    PRINT ('Components compatible with product ID: ' + CAST(@product_id AS VARCHAR(10)))
+
+    PRINT ('Product ID | Product Name                        | Category             | Is Compatible')
+    PRINT ('-------------------------------------------------------------------------------------------')
+
+    WHILE @@FETCH_STATUS = 0
+    BEGIN
+        EXEC (N'BEGIN COMPONENT_MANAGEMENT.CHECK_COMPATIBILITY(?,?,?); END;', @product_id, @product_id_2, @output OUTPUT) AT OracleLS;
+
+        PRINT (LEFT(CAST(@product_id_2 AS VARCHAR(10)) + REPLICATE(' ', 10), 10) + ' | ' +
+               LEFT(@product_name + REPLICATE(' ', 35), 35) + ' | ' +
+               LEFT(@category + REPLICATE(' ', 20), 20) + ' | ' +
+               CASE WHEN @output = 1 THEN 'is compatible' ELSE 'is not compatible' END)
+
+        FETCH NEXT FROM stock_cursor INTO @product_id_2, @product_name, @category;
+    END;
+
+    CLOSE stock_cursor;
+    DEALLOCATE stock_cursor;
+END;
+GO
+
+-- CombineTransaction Procedure -------------------------------------------------
+
+CREATE OR ALTER PROCEDURE CombineTransaction AS
+BEGIN
+    SET NOCOUNT ON;
+
+    INSERT INTO Transactions
+    SELECT product_id, client_id, quantity, price, transaction_date
+    FROM LocalTransactions;
+END;
+GO

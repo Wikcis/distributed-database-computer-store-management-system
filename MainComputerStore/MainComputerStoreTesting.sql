@@ -1,41 +1,73 @@
 Use MainComputerStore
 Go
 
--- TESTING ----------------------------------
-SELECT * FROM Products
+-- TESTING ---------------------------------
+
+SELECT * FROM Stock;
 Go
 
-EXEC AddComponentToStore 'Procesor INTEL Core i3','Processor', 10, 1000
-
-EXEC AddComponentToStore 'Karta graficzna NVIDIA 4060 Ti','Graphics', 2, 5000
-
-EXEC AddComponentToStore 'Pamiêæ Ram','RAM', 5, 100
-
-SELECT * FROM Products
+SELECT * FROM Clients;
 Go
 
--------------
+SELECT * FROM Transactions;
+Go
 
-EXEC AddLog @log_message = 'Delivery is incomplete!'
+SELECT * FROM AvailableMotherboards
+Go
 
-SELECT * FROM Logs
+SELECT * FROM AvailableGraphics
+Go
 
--------------
-SELECT * FROM SqlServerAvailableComponents
+SELECT * FROM AvailableProcessor
+Go
+
+SELECT * FROM AvailableRam
+Go
+
+EXEC BuyComponent 
+	@product_id = 9,
+    @client_id = 1,
+    @quantity = 1
+Go
+
+EXEC RequestAddingProducts
+	@product_id = 9
+Go
+
+-------------------
+
+SELECT * FROM Stock;
+Go
+
+EXEC CheckCompatibility 
+	@product_id_1 = 1,
+    @product_id_2 = 8
+Go
+
+EXEC DisplayCompatibleComponents
+	@product_id = 4
+Go
+
+------------
+EXEC CombineTransaction
 
 SELECT * FROM OracleAvailableComponents
+Go
 
-SELECT * FROM Products
+SELECT * FROM LocalTransactions;
+Go
 
-EXEC CheckAndTransferStock 4
+SELECT * FROM Transactions;
+Go
 
--------------
-
-SELECT * FROM Transactions
+SELECT * FROM ProductSales
+Go
 
 SELECT * FROM MostPurchasedProducts
 GO
 
 SELECT * FROM TotalSalesValueByComponent
 Go
--------------
+
+SELECT * FROM ComponentPrices
+Go

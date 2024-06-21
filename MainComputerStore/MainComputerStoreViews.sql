@@ -3,18 +3,6 @@ Go
 
 -- VIEWS ---------------------------------------
 
--- SqlServerAvailableComponents View -------------------------------------------------
-CREATE OR ALTER VIEW SqlServerAvailableComponents AS
-SELECT *
-FROM OPENROWSET('MSOLEDBSQL', 
-	'LAPTOP-PCASHRLR'; 
-	'ComputerStoreLoginSqlServer'; 
-	'12345','SELECT * FROM [SQLServerLS].[ComputerStoreSQLServer].dbo.Stock s WHERE s.quantity > 0')
-Go
-
-SELECT * FROM SqlServerAvailableComponents
-Go
-
 -- OracleAvailableComponents View -------------------------------------------------
 CREATE OR ALTER VIEW OracleAvailableComponents AS
 SELECT *
@@ -22,42 +10,20 @@ FROM OPENROWSET('OraOLEDB.Oracle',
 	'pd19c'; 
 	'computerStoreUserOracle'; 
 	'12345',
-	'SELECT * FROM COMPUTERSTOREUSERORACLE.STOCK s WHERE s.quantity > 0') AS OracleStock
+	'SELECT * FROM COMPUTERSTOREUSERORACLE.PRODUCTS s WHERE s.quantity > 0') AS OracleStock
 Go
 
 SELECT * FROM OracleAvailableComponents
 Go
 
-
--- AllAvailableComponents View -------------------------------------------------
-CREATE OR ALTER VIEW AllAvailableComponents AS
-SELECT * FROM (
-    SELECT *
-    FROM OPENROWSET('MSOLEDBSQL', 
-		'LAPTOP-PCASHRLR'; 
-		'computerStoreLoginSqlServer'; 
-		'12345','SELECT * FROM [SQLServerLS].[ComputerStoreSQLServer].dbo.Stock s WHERE s.quantity > 0') AS SQLServerStock
-    UNION ALL
-    SELECT *
-    FROM OPENROWSET('OraOLEDB.Oracle', 
-		'pd19c'; 
-		'computerStoreUserOracle'; 
-		'12345',
-		'SELECT * FROM COMPUTERSTOREUSERORACLE.STOCK s WHERE s.quantity > 0') AS OracleStock
-) AS CombinedStock;
-Go
-
-SELECT * FROM AllAvailableComponents
-Go
-
 -- ComponentPrices View -------------------------------------------------
 CREATE OR ALTER VIEW ComponentPrices AS
 SELECT 
-    p.product_id,
-    p.product_name,
-    p.price
+    s.product_id,
+    s.product_name,
+    s.price
 FROM 
-    Products p;
+    Stock s;
 GO
 
 SELECT * FROM ComponentPrices
@@ -68,10 +34,10 @@ CREATE OR ALTER VIEW ProductSales AS
 SELECT 
     p.product_id,
     p.product_name,
-    COALESCE(SUM(t.quantity), 0) AS sold_quantity,
+    COUNT(t.transaction_id) AS sold_quantity,
     p.quantity AS available_quantity
 FROM 
-    Products p
+    Stock p
 LEFT JOIN 
     Transactions t ON p.product_id = t.product_id
 GROUP BY 
@@ -89,7 +55,7 @@ SELECT TOP 3
     p.product_name,
     COUNT(t.transaction_id) AS purchase_count
 FROM 
-    Products p
+    Stock p
 JOIN 
     Transactions t ON p.product_id = t.product_id
 GROUP BY 
@@ -107,9 +73,9 @@ CREATE OR ALTER VIEW TotalSalesValueByComponent AS
 SELECT 
     p.product_id,
     p.product_name,
-    SUM(t.price * t.quantity) AS total_sales_value
+    SUM(t.quantity) AS total_sales_value
 FROM 
-    Products p
+    Stock p
 JOIN 
     Transactions t ON p.product_id = t.product_id
 GROUP BY 
@@ -118,24 +84,72 @@ GO
 
 SELECT * FROM TotalSalesValueByComponent
 Go
--- SimilarAvailableComponents View -------------------------------------------------
 
-CREATE OR ALTER VIEW SimilarAvailableComponents AS
+-- AvailableComponents View -------------------------------------------------
+CREATE OR ALTER VIEW AvailableComponents AS
 SELECT 
-    p1.product_id AS unavailable_product_id,
-    p1.product_name AS unavailable_product_name,
-    p2.product_id AS similar_product_id,
-    p2.product_name AS similar_product_name,
-    p2.quantity,
-    p2.price
-FROM 
-    Products p1
-JOIN 
-    Products p2 ON p1.product_id <> p2.product_id
-WHERE 
-    p1.quantity = 0 AND p2.quantity > 0 AND 
-    p1.product_name =p2.product_name
-GO
+	product_id,
+	category,
+	price
+FROM Stock
+WHERE quantity > 0
+Go
 
-SELECT * FROM SimilarAvailableComponents
+SELECT * FROM AvailableComponents
+Go
+
+-- AvailableGraphics View -------------------------------------------------
+CREATE OR ALTER VIEW AvailableGraphics AS
+SELECT 
+	product_id,
+	product_name,
+	quantity,
+	price
+FROM Stock
+WHERE category = 'Graphics'
+Go
+
+SELECT * FROM AvailableGraphics
+Go
+
+-- AvailableProcessor View -------------------------------------------------
+CREATE OR ALTER VIEW AvailableProcessor AS
+SELECT 
+	product_id,
+	product_name,
+	quantity,
+	price
+FROM Stock
+WHERE category = 'Processor'
+Go
+
+SELECT * FROM AvailableProcessor
+Go
+
+-- AvailableRam View -------------------------------------------------
+CREATE OR ALTER VIEW AvailableRam AS
+SELECT 
+	product_id,
+	product_name,
+	quantity,
+	price
+FROM Stock
+WHERE category = 'Ram'
+Go
+
+SELECT * FROM AvailableRam
+Go
+
+-- AvailableMotherBoards View -------------------------------------------------
+CREATE OR ALTER VIEW AvailableMotherboards AS
+SELECT 
+	product_id,
+	product_name,
+	quantity,
+	price
+FROM Stock
+WHERE category = 'Motherboard'
+Go
+
+SELECT * FROM AvailableMotherboards
 Go
